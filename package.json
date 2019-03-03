@@ -1,0 +1,23 @@
+{
+  "name": "codezoo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "mocha": "^6.0.2"
+  },
+  "dependencies": {
+    "argparse": "^1.0.10",
+    "colors": "^1.3.3",
+    "commander": "^2.19.0",
+    "inquirer": "^6.2.2",
+    "opn": "^5.4.0",
+    "yargs": "^13.2.1"
+  }
+}
