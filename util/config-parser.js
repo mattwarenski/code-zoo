@@ -90,7 +90,6 @@ function getCurrentChain(){
 }
 
 function findClassParent(className){
-  console.log("searching for class parent", className)
   let currentLevel = config;
   let parent;
   while(currentLevel.currentChild && currentLevel['class'] !== className){
@@ -207,13 +206,18 @@ public.createNew = async className => {
   const currentChain = getCurrentChain();
   const classParent = findClassParent(className) || await prompParentClass(currentChain);
 
-  console.log('found class parent', classParent)
+  const currentInstance = classParent.children.find(instance => instance.name === classParent.currentChild);
 
-  const newInstance =  await getFromEditor(createInstanceTemplate(), classParent);
+  //console.log('found class parent', classParent)
+  const newTemplate = currentInstance ? Object.assign({}, currentInstance) : createInstanceTemplate();
+
+  const newInstance =  await getFromEditor(newTemplate, classParent);
   newInstance['class'] = className;
 
   classParent.currentChild = newInstance.name;
   classParent.children.push(newInstance);
+
+  await runPlugins(newInstance, "onNew"); 
 
   save();
 }
@@ -221,11 +225,14 @@ public.createNew = async className => {
 public.switch = async className => {
 
   const parentClass = findClassParent(className);
+  const currentInstance = parentClass.children.find(c => c.name === parentClass.currentChild)
   const newInstance = await promptSibling(parentClass, className, true);
 
   console.log("switching to ", newInstance)
 
   parentClass.currentChild = newInstance.name;
+
+  await runPlugins(newInstance, "onSwitch", currentInstance); 
 
   save();
 }
@@ -250,6 +257,7 @@ public.archive = async className => {
   //TODO handle case where a current child is archived
 
   console.log(config)
+  await runPlugins(toArchive, "onArchive"); 
 
   save();
 }
@@ -266,7 +274,27 @@ public.edit = async className => {
     classParent.currentChild = editedCopy.name; 
   }
 
+  await runPlugins(editedCopy, "onEdit"); 
+
   save();
+}
+
+async function runPlugins(currentLevel, hookName, previousLevel)
+{
+  for(pluginName in currentLevel.plugins){
+    if(currentLevel.plugins.hasOwnProperty(pluginName)){
+      console.log("searching for plugin", pluginName, "hookname", hookName)
+      var plugin = require("../plugins/" + pluginName + ".js") 
+      console.log("plugin", plugin)
+      if(plugin && plugin[hookName]){
+        console.log("Found plugin: running hook", hookName)
+        const promise = plugin[hookName](currentLevel.name, currentLevel.plugins[pluginName], previousLevel.name);
+        if(promise){
+          await promise; 
+        }
+      }
+    } 
+  }
 }
 
 
