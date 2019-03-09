@@ -67,17 +67,34 @@ module.exports =  {
     ////todo validate that it is a git directory
   //},
 
-  "onEdit" : function(levelName, config){
-    console.log("edit got levelName", levelName, config) 
+  "onEdit" : function(levelName, config, previousLevel){
+    runGitCommand(`branch -m ${previousLevel} ${levelName}`, config)
   },
 
-  "onNew" : function(levelName, config){
+  "onNew" : function(levelName, config, previousLevel){
     console.log("running new")
-      childProcess.execSync(`git checkout -b ${levelName}`, {"cwd" : config.projectDir, stdio: [process.stdin, process.stdout, process.stderr]})
+    if(config.parentBranch){
+      console.log("Branching from parent branch", config.parentBranch)
+      const stashAnswer = handleStash(previousLevel, config); 
+
+      if(stashAnswer === "Abort"){
+        return; 
+      }
+
+      runGitCommand(`checkout ${config.parentBranch}`, config)
+      try{
+        runGitCommand(`pull`, config)
+      } catch(e){
+        console.log(`Unable to pull branch ${config.parentBranch}`, e) 
+      }
+
+    }
+    runGitCommand(`checkout -b ${levelName}`, config)
   },
 
   "onArchive" : function(levelName, config){
     console.log("archive levelName", levelName, config) 
+    //TODO: prompt remove branch 
   },
 
   "onSwitch" : async function(levelName, config, previousLevel){

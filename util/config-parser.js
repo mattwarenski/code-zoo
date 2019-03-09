@@ -81,9 +81,11 @@ function getFromEditor(obj, classParent, currentName)
 function getCurrentChain(){
   const currentChain = [config];
   let currentLevel = config;
-  while(currentLevel.currentChild){
+  while(currentLevel && currentLevel.currentChild){
     currentLevel = currentLevel.children.find(child => currentLevel.currentChild === child.name)
-    currentChain.push(currentLevel);
+    if(currentLevel){
+      currentChain.push(currentLevel);
+    }
   }
 
   return currentChain;
@@ -95,6 +97,9 @@ function findClassParent(className){
   while(currentLevel.currentChild && currentLevel['class'] !== className){
     parent = currentLevel;
     currentLevel = currentLevel.children.find(child => currentLevel.currentChild === child.name)
+    if(!currentLevel){
+      return null;
+    }
   }
 
   if(currentLevel['class'] === className){
@@ -114,6 +119,16 @@ function createInstanceTemplate(){
     plugins : {}, 
     children : [], 
   }
+}
+
+function promptConfirmation(message){
+  return inquirer.prompt([
+    {
+      name : 'answer',
+      type : 'confirm',
+      message
+    } 
+  ])
 }
 
 function promptRetryAfterError(error){
@@ -152,10 +167,11 @@ function prompParentClass(currentChain){
 }
 
 async function promptSibling(classParent, className, filterCurrent, showArchived){
+console.log("cp", classParent)
   const siblings = classParent.children
                               .filter(child => child['class'] === className)
                               .filter(child => !filterCurrent || child.name != classParent.currentChild)
-                              .filter(child => showArchived || !child.archived)
+                              .filter(child => showArchived ? true : !child.archived)
 
   if(!siblings.length){
     rageQuit(`${className} has no other instances to switch to`) 
@@ -217,7 +233,7 @@ public.createNew = async className => {
   classParent.currentChild = newInstance.name;
   classParent.children.push(newInstance);
 
-  await runPlugins(newInstance, "onNew"); 
+  await runPlugins(newInstance, "onNew", currentInstance); 
 
   save();
 }
@@ -225,6 +241,8 @@ public.createNew = async className => {
 public.switch = async className => {
 
   const parentClass = findClassParent(className);
+  if(!parentClass)
+    rageQuit(`Unable to find parent for class '${className}'`)
   const currentInstance = parentClass.children.find(c => c.name === parentClass.currentChild)
   const newInstance = await promptSibling(parentClass, className, true);
 
@@ -265,6 +283,8 @@ public.archive = async className => {
 public.edit = async className => {
 
   const classParent = findClassParent(className);
+  if(!classParent)
+    rageQuit(`Unable to find parent for class '${className}'`)
   const toEdit = await promptSibling(classParent, className);
   const editedCopy =  await getFromEditor(toEdit, classParent, toEdit.name);
   
@@ -274,7 +294,7 @@ public.edit = async className => {
     classParent.currentChild = editedCopy.name; 
   }
 
-  await runPlugins(editedCopy, "onEdit"); 
+  await runPlugins(editedCopy, "onEdit", toEdit); 
 
   save();
 }
@@ -284,14 +304,22 @@ async function runPlugins(currentLevel, hookName, previousLevel)
   for(pluginName in currentLevel.plugins){
     if(currentLevel.plugins.hasOwnProperty(pluginName)){
       console.log("searching for plugin", pluginName, "hookname", hookName)
-      var plugin = require("../plugins/" + pluginName + ".js") 
-      console.log("plugin", plugin)
-      if(plugin && plugin[hookName]){
-        console.log("Found plugin: running hook", hookName)
-        const promise = plugin[hookName](currentLevel.name, currentLevel.plugins[pluginName], previousLevel.name);
-        if(promise){
-          await promise; 
+      try{
+        var plugin = require("../plugins/" + pluginName + ".js") 
+        console.log("plugin", plugin)
+        if(plugin && plugin[hookName]){
+          console.log("Found plugin: running hook", hookName)
+          const promise = plugin[hookName](currentLevel.name, currentLevel.plugins[pluginName], previousLevel.name);
+          if(promise){
+            await promise; 
+          }
         }
+      } catch (e){
+        console.log(`Error Occurred while running ${pluginName}'`, e) 
+        const response = await promptConfirmation("Would you like to continue");
+        if(!response.answer){
+          rageQuit("Aborting")
+        }        
       }
     } 
   }
