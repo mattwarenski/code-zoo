@@ -2,6 +2,7 @@ const public = {};
 const fs = require('fs');
 const inquirer = require('inquirer');
 const { spawn } = require('child_process');
+const util = require('../util.js')
 
 //TODO: use home env 
 const DEFAULT_CONFIG_FILE = "/home/mathew/.codezoo.json"
@@ -16,7 +17,7 @@ const EDITOR = process.env.EDITOR || 'vi';
 
   
 function rageQuit(reason){
-  console.log(reason);
+  util.logPhase(reason, true)
   process.exit(1);
 }
 
@@ -57,7 +58,7 @@ function getFromEditor(obj, classParent, currentName)
       const inputJSON = JSON.parse(result);
       validateEditorResponse(inputJSON, classParent, currentName)
       const finalObj = Object.assign(nonEditableObj, inputJSON);
-      console.log("done editing got:", finalObj)
+      //console.log("done editing got:", finalObj)
       resolve(finalObj)
       } catch(e){
           promptRetryAfterError(e)
@@ -161,13 +162,13 @@ function prompParentClass(currentChain){
       message : `Select parent class`
     } 
   ]).then(res => {
-    console.log('got res', res) 
+    //console.log('got res', res) 
     return currentChain.find(level => level['class'] === res.parentClass)
   });
 }
 
 async function promptSibling(classParent, className, filterCurrent, showArchived){
-console.log("cp", classParent)
+  //console.log("cp", classParent)
   const siblings = classParent.children
                               .filter(child => child['class'] === className)
                               .filter(child => !filterCurrent || child.name != classParent.currentChild)
@@ -186,7 +187,7 @@ console.log("cp", classParent)
       message : `Select instance to switch to`
     } 
   ]).then(res => {
-    console.log('got res', res) 
+    //console.log('got res', res) 
     return classParent.children.find(child => child.name === res.name)
   });
 }
@@ -246,7 +247,7 @@ public.switch = async className => {
   const currentInstance = parentClass.children.find(c => c.name === parentClass.currentChild)
   const newInstance = await promptSibling(parentClass, className, true);
 
-  console.log("switching to ", newInstance)
+  util.logPhase(`Switching to ${className} ${newInstance.name}`)
 
   parentClass.currentChild = newInstance.name;
 
@@ -269,12 +270,12 @@ public.archive = async className => {
   const parentClass = findClassParent(className);
   const toArchive = await promptSibling(parentClass, className);
 
-  console.log("archiving ", toArchive)
+  //console.log("archiving ", toArchive)
 
   toArchive.archived = true;
   //TODO handle case where a current child is archived
 
-  console.log(config)
+  //console.log(config)
   await runPlugins(toArchive, "onArchive"); 
 
   save();
@@ -303,19 +304,19 @@ async function runPlugins(currentLevel, hookName, previousLevel)
 {
   for(pluginName in currentLevel.plugins){
     if(currentLevel.plugins.hasOwnProperty(pluginName)){
-      console.log("searching for plugin", pluginName, "hookname", hookName)
+      //console.log("searching for plugin", pluginName, "hookname", hookName)
       try{
         var plugin = require("../plugins/" + pluginName + ".js") 
-        console.log("plugin", plugin)
         if(plugin && plugin[hookName]){
-          console.log("Found plugin: running hook", hookName)
+          //console.log("Found plugin: running hook", hookName)
+          util.logPhase(`Running plugin ${pluginName}`)
           const promise = plugin[hookName](currentLevel.name, currentLevel.plugins[pluginName], previousLevel.name);
           if(promise){
             await promise; 
           }
         }
       } catch (e){
-        console.log(`Error Occurred while running ${pluginName}'`, e) 
+        util.logPhase(`Error Occurred while running ${pluginName}'`, e)
         const response = await promptConfirmation("Would you like to continue");
         if(!response.answer){
           rageQuit("Aborting")

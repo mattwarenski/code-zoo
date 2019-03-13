@@ -1,41 +1,53 @@
 const childProcess = require("child_process");
 const inquirer = require('inquirer');
+const util = require('../util.js')
+
+//async function branchExists(branchName)
+//{
+  //await runGitCommand("for-each-ref --format='%(refname)' 'refs/heads/*'", config, true)
+    //.split("\n")
+    //.
+//}
 
 function runGitCommand(command, config, noLog){
-  console.log(`childProcess.execSync(git ${command}, {"cwd" : config.projectDir, stdio: [process.stdin, process.stdout, process.stderr]})`);
-  const props = {"cwd" : config.projectDir, encoding : 'utf-8'};
-  if(!noLog){
-    props.stdio =  [process.stdin, process.stdout, process.stderr];
-  }
-  return childProcess.execSync(`git ${command}`, props)
+  return new Promise((resolve, reject) => {
+    util.logStep(`:git ${command}`);
+    const props = {"cwd" : config.projectDir, "encoding" : 'utf-8'};
+    childProcess.exec(`git ${command}`, props, (error, stdout, stderr) => {
+      if(error){
+        reject(error);
+      } else {
+        if(!noLog)
+          util.logStep("stdout", stdout);  
+        resolve(stdout ? stdout : " ");
+      }
+    })
+  })
 }
 
 function getStashKey(branch, carry){
   return `cz-stash-${branch}${carry ? "-carry" : ""}`;
 }
 
-function handleUnstash(branchName, config){
-console.log("stashname ", getStashKey(branchName))
-  const branchStash = runGitCommand("--no-pager stash list", config, true)
+async function handleUnstash(branchName, config){
+  const branchStash = await runGitCommand("--no-pager stash list", config, true)
                      .split('\n')
                      .filter(p => p)
                      .map(p => p.split(":"))
                      .find(a => a[2].trim() === getStashKey(branchName))
 
-  console.log('found', branchStash)
   if(branchStash){
     const indexMatch = branchStash[0].match(/stash@\{([\d+])\}/);
-    console.log("Popping previous branch changes")
-    runGitCommand(`stash pop --index ${indexMatch[1]}`, config) 
+    util.logStep("Popping previous branch changes")
+    await runGitCommand(`stash pop --index ${indexMatch[1]}`, config) 
   }
 
 }
 
 async function handleStash(branchName, config){
-    const hasChanges = runGitCommand("status --porcelain", config, true)
-    console.log("has changes output", hasChanges)
+    const hasChanges = await runGitCommand("status --porcelain", config, true)
     if(hasChanges){
-      runGitCommand("status", config);
+      await runGitCommand("status", config);
       const response = await inquirer.prompt([
         {
           name : 'answer', 
@@ -46,9 +58,9 @@ async function handleStash(branchName, config){
       ]);
 
       if(response.answer === 'Carry'){
-        runGitCommand(`stash push -u -m '${getStashKey(branchName, true)}'`, config);  
+        await runGitCommand(`stash push -u -m '${getStashKey(branchName, true)}'`, config);  
       } else if(response.answer === 'Stash'){
-        runGitCommand(`stash push -u -m '${getStashKey(branchName)}'`, config);  
+        await runGitCommand(`stash push -u -m '${getStashKey(branchName)}'`, config);  
       } 
 
       return response.answer; 
@@ -67,32 +79,31 @@ module.exports =  {
     ////todo validate that it is a git directory
   //},
 
-  "onEdit" : function(levelName, config, previousLevel){
-    runGitCommand(`branch -m ${previousLevel} ${levelName}`, config)
+  "onEdit" : async function(levelName, config, previousLevel){
+    await runGitCommand(`branch -m ${previousLevel} ${levelName}`, config)
   },
 
-  "onNew" : function(levelName, config, previousLevel){
-    console.log("running new")
+  "onNew" :async function(levelName, config, previousLevel){
     if(config.parentBranch){
-      console.log("Branching from parent branch", config.parentBranch)
-      const stashAnswer = handleStash(previousLevel, config); 
+      util.logStep("Branching from parent branch " + config.parentBranch)
+      const stashAnswer = await handleStash(previousLevel, config); 
 
       if(stashAnswer === "Abort"){
         return; 
       }
 
-      runGitCommand(`checkout ${config.parentBranch}`, config)
+      await runGitCommand(`checkout ${config.parentBranch}`, config)
       try{
-        runGitCommand(`pull`, config)
+        await runGitCommand(`pull`, config)
       } catch(e){
-        console.log(`Unable to pull branch ${config.parentBranch}`, e) 
+        util.logStep(`Unable to pull branch ${config.parentBranch}`, e) 
       }
 
     }
-    runGitCommand(`checkout -b ${levelName}`, config)
+    await runGitCommand(`checkout -b ${levelName}`, config)
   },
 
-  "onArchive" : function(levelName, config){
+  "onArchive" : async function(levelName, config){
     console.log("archive levelName", levelName, config) 
     //TODO: prompt remove branch 
   },
@@ -104,14 +115,14 @@ module.exports =  {
       return; 
     }
 
-    console.log("switching to branch", levelName) 
-    runGitCommand(`checkout ${levelName}`, config)
+    util.logStep("switching to branch " + levelName); 
+    await runGitCommand(`checkout ${levelName}`, config)
 
     if(stashAnswer === "Carry"){
-      runGitCommand(`stash pop`, config) 
+      await runGitCommand(`stash pop`, config) 
     }
 
-    handleUnstash(levelName, config);
+    await handleUnstash(levelName, config);
 
   }
 
