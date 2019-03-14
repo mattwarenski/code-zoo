@@ -15,7 +15,6 @@ config.load().then(()=>{
           boolean : true
       }),
       handler: (argv) => {
-        console.log('running new argv:', argv)
         config.createNew(argv['class'])
       }
     })
@@ -30,7 +29,6 @@ config.load().then(()=>{
       }),
       desc: 'switch description',
       handler: (argv) => {
-        console.log('running switch argv:', argv)
         config.switch(argv['class'])
       }
     })
@@ -47,7 +45,6 @@ config.load().then(()=>{
       aliases: ['d', 'rm'],
       desc: 'delete description',
       handler: (argv) => {
-        console.log('running delete argv:', argv)
       }
     })
     .command({

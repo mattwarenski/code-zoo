@@ -14,13 +14,10 @@ let config;
 
 const EDITOR = process.env.EDITOR || 'vi';
 
-
-  
 function rageQuit(reason){
   util.logPhase(reason, true)
   process.exit(1);
 }
-
 
 function filterObj(obj, allowed, invert)
 {
@@ -230,6 +227,8 @@ public.createNew = async className => {
 
   const newInstance =  await getFromEditor(newTemplate, classParent);
   newInstance['class'] = className;
+  newInstance.children = [];
+  newInstance.currentChild = "";
 
   classParent.currentChild = newInstance.name;
   classParent.children.push(newInstance);
