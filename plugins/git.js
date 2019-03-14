@@ -98,7 +98,7 @@ module.exports =  {
   },
 
   "onNew" :async function(levelName, config, previousLevel){
-    if(!await branchExists(levelName, config)){
+    if(await branchExists(levelName, config)){
       util.logStep("Branch already exists in git");
       await runGitCommand(`checkout ${levelName}`, config)
       return;
