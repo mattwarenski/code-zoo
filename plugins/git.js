@@ -2,24 +2,37 @@ const childProcess = require("child_process");
 const inquirer = require('inquirer');
 const util = require('../util.js')
 
-//async function branchExists(branchName)
-//{
-  //await runGitCommand("for-each-ref --format='%(refname)' 'refs/heads/*'", config, true)
-    //.split("\n")
-    //.
-//}
+async function branchExists(branchName, config)
+{
+  let output = await runGitCommand("for-each-ref --format='%(refname)' 'refs/heads/*'", config, true);
+
+    const branches = (output || "")
+    .split("\n")
+    .map(ref => ref.substring("refs/heads/".length))
+    .filter(a => a) || [];
+
+    //console.log("found branches", branches);
+    //console.log('looking for ', branchName)
+
+    //console.log("branches.index", !!branches.find(branch => branch === branchName));
+
+  return !!branches.find(branch => branch === branchName)
+
+}
 
 function runGitCommand(command, config, noLog){
   return new Promise((resolve, reject) => {
-    util.logStep(`:git ${command}`);
+    if(!noLog){
+      util.logStep(`git ${command}`);
+    }
     const props = {"cwd" : config.projectDir, "encoding" : 'utf-8'};
     childProcess.exec(`git ${command}`, props, (error, stdout, stderr) => {
       if(error){
         reject(error);
       } else {
         if(!noLog)
-          util.logStep("stdout", stdout);  
-        resolve(stdout ? stdout : " ");
+          util.logStep(stdout);  
+        resolve(stdout ? stdout : "");
       }
     })
   })
@@ -30,7 +43,7 @@ function getStashKey(branch, carry){
 }
 
 async function handleUnstash(branchName, config){
-  const branchStash = await runGitCommand("--no-pager stash list", config, true)
+  const branchStash = new String(await runGitCommand("--no-pager stash list", config, true))
                      .split('\n')
                      .filter(p => p)
                      .map(p => p.split(":"))
@@ -46,6 +59,7 @@ async function handleUnstash(branchName, config){
 
 async function handleStash(branchName, config){
     const hasChanges = await runGitCommand("status --porcelain", config, true)
+
     if(hasChanges){
       await runGitCommand("status", config);
       const response = await inquirer.prompt([
@@ -109,6 +123,11 @@ module.exports =  {
   },
 
   "onSwitch" : async function(levelName, config, previousLevel){
+
+    if(!await branchExists(levelName, config)){
+      util.logStep("branch is not current tracked by git.");
+      return
+    }
     const stashAnswer = await handleStash(previousLevel, config);
 
     if(stashAnswer === "Abort"){
