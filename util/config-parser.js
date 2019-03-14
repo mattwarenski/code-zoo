@@ -310,7 +310,7 @@ async function runPlugins(currentLevel, hookName, previousLevel)
         if(plugin && plugin[hookName]){
           //console.log("Found plugin: running hook", hookName)
           util.logPhase(`Running plugin ${pluginName}`)
-          const promise = plugin[hookName](currentLevel.name, currentLevel.plugins[pluginName], previousLevel.name);
+          const promise = plugin[hookName](currentLevel.name, currentLevel.plugins[pluginName], previousLevel ? previousLevel.name : null);
           if(promise){
             await promise; 
           }
