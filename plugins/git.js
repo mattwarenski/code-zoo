@@ -98,6 +98,11 @@ module.exports =  {
   },
 
   "onNew" :async function(levelName, config, previousLevel){
+    if(!await branchExists(levelName, config)){
+      util.logStep("Branch already exists in git");
+      await runGitCommand(`checkout ${levelName}`, config)
+      return;
+    }
     if(config.parentBranch){
       util.logStep("Branching from parent branch " + config.parentBranch)
       const stashAnswer = await handleStash(previousLevel, config); 
@@ -125,8 +130,10 @@ module.exports =  {
   "onSwitch" : async function(levelName, config, previousLevel){
 
     if(!await branchExists(levelName, config)){
-      util.logStep("branch is not current tracked by git.");
-      return
+      const answer = await util.confirmation("Branch is not currently tracked by git. Create branch?")
+      if(answer.answer){
+        await runGitCommand(`checkout -b ${levelName}`, config) 
+      }
     }
     const stashAnswer = await handleStash(previousLevel, config);
 
