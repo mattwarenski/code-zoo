@@ -252,6 +252,12 @@ public.switch = async className => {
 
   await runPlugins(newInstance, "onSwitch", currentInstance); 
 
+  let childPointer = parentClass.children.find(child => child.name === parentClass.currentChild);
+  while(childPointer){
+    await runPlugins(childPointer, "onParentSwitch", childPointer); 
+    childPointer = childPointer.children.find(child => child.name === childPointer.currentChild);
+  }
+
   save();
 
   util.logPhase('current chain')

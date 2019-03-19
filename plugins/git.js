@@ -74,6 +74,11 @@ class GitPlugin extends Plugin{
 
   }
 
+
+  async onParentSwitch(levelName, previousLevel){
+    await this.onSwitch(levelName, previousLevel); 
+  }
+
   async branchExists(branchName)
   {
     let output = await this.runGitCommand("for-each-ref --format='%(refname)' 'refs/heads/*'", this.config, true);
