@@ -34,7 +34,7 @@ config.load().then(()=>{
     })
     .command({
       command: 'archive <class> [name]',
-      aliases: ['d', 'rm'],
+      aliases: ['a'],
       desc: 'archive description',
       handler: (argv) => {
         config.archive(argv['class'])
@@ -56,7 +56,8 @@ config.load().then(()=>{
       }
     })
     .command({
-      command: 'show-tree',
+      command: 'show-chain',
+      aliases: ['sc', 'chain'],
       desc: 'showtree description',
       handler: (argv) => {
         config.showLevelChain()
