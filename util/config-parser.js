@@ -253,16 +253,26 @@ public.switch = async className => {
   await runPlugins(newInstance, "onSwitch", currentInstance); 
 
   save();
+
+  util.logPhase('current chain')
+  public.showLevelChain();
 }
 
 public.showLevelChain = className => {
   const currentChain = getCurrentChain();
-  currentChain.forEach(level => console.log(`${level['class']} - ${level.currentChild}`))
+    
+  const out = currentChain.splice(1).map(level => `${level['class']} - ${level.name}`)
+                        .join("\n");
+  util.logPhase(out)
 }
 
 public.show = className => {
   const parentClass = findClassParent(className);
-  parentClass.children.forEach(child => console.log(`${child.name}${child.archived ? " (archived)" : ""}`))
+
+  const out = parentClass.children.map(child => `${child.name}${child.archived ? " (archived)" : ""}`)
+                                  .join('\n');
+
+  util.logPhase(out);
 }
 
 public.archive = async className => {
@@ -306,14 +316,10 @@ async function runPlugins(currentLevel, hookName, previousLevel)
       //console.log("searching for plugin", pluginName, "hookname", hookName)
       try{
         var plugin = require("../plugins/" + pluginName + ".js") 
-        if(plugin && plugin[hookName]){
-          //console.log("Found plugin: running hook", hookName)
-          util.logPhase(`Running plugin ${pluginName}`)
-          const promise = plugin[hookName](currentLevel.name, currentLevel.plugins[pluginName], previousLevel ? previousLevel.name : null);
-          if(promise){
-            await promise; 
-          }
-        }
+        if(!plugin) return;
+        const instance = new plugin(currentLevel.plugins[pluginName]);
+        util.logPhase(`Running plugin ${pluginName}`)
+        const promise = await instance[hookName](currentLevel.name, previousLevel ? previousLevel.name : null);
       } catch (e){
         util.logPhase(`Error Occurred while running ${pluginName}'`, e)
         const response = await promptConfirmation("Would you like to continue");
