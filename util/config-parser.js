@@ -211,24 +211,38 @@ async function save(){
   fs.writeFileSync(configFile, JSON.stringify(config)); 
 }
 
-public.createNew = async className => {
+public.createNew = async (className, args) => {
   if(className === '_global'){
     rageQuit("class name '_global' is reserved") 
   }
-  
-  
+
   const currentChain = getCurrentChain();
-  const classParent = findClassParent(className) || await prompParentClass(currentChain);
+
+  let classParent;
+  if(args.name){
+    if(!args.parentClass){
+      rageQuit('Parent class must be supplied if name supplied.') 
+    }
+    classParent = currentChain.find(level => level['class'] === args.parentClass)
+  } else {
+    classParent = findClassParent(className) || await prompParentClass(currentChain);
+  }
 
   const currentInstance = classParent.children.find(instance => instance.name === classParent.currentChild);
 
-  //console.log('found class parent', classParent)
-  const newTemplate = currentInstance ? Object.assign({}, currentInstance) : createInstanceTemplate();
-
-  const newInstance =  await getFromEditor(newTemplate, classParent);
-  newInstance['class'] = className;
-  newInstance.children = [];
-  newInstance.currentChild = "";
+  let newInstance;
+  if(args.name){
+    newInstance = createInstanceTemplate();
+    newInstance['class'] = className;
+    newInstance.name = args.name;
+    newInstance.plugins = JSON.parse(args.plugins)
+  } else {
+    const newTemplate = currentInstance ? Object.assign({}, currentInstance) : createInstanceTemplate();
+    newInstance =  await getFromEditor(newTemplate, classParent);
+    newInstance['class'] = className;
+    newInstance.children = [];
+    newInstance.currentChild = "";
+  }
 
   classParent.currentChild = newInstance.name;
   classParent.children.push(newInstance);
@@ -319,7 +333,6 @@ async function runPlugins(currentLevel, hookName, previousLevel)
 {
   for(pluginName in currentLevel.plugins){
     if(currentLevel.plugins.hasOwnProperty(pluginName)){
-      //console.log("searching for plugin", pluginName, "hookname", hookName)
       try{
         var plugin = require("../plugins/" + pluginName + ".js") 
         if(!plugin) return;

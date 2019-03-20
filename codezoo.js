@@ -9,13 +9,19 @@ config.load().then(()=>{
       aliases: ['new', 'create'],
       desc: 'new description',
       builder: (yargs) => yargs
-        .option('c', {
-          alias: 'child',
-          desc: 'create child',
-          boolean : true
-      }),
+        .option('n', {
+          alias: 'name',
+          desc: 'name of the new instance'
+        })
+        .option('p', {
+          alias: 'plugins', 
+          desc: 'JSON object containing plugin info'
+        })
+        .option('parent', {
+          desc: 'parent class if the class is new' 
+        }),
       handler: (argv) => {
-        config.createNew(argv['class'])
+        config.createNew(argv['class'], {name : argv.name, plugins : argv.plugins || "{}", parentClass: argv.parent});
       }
     })
     .command({
