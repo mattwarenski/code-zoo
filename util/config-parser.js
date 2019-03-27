@@ -235,7 +235,7 @@ public.createNew = async (className, args) => {
     newInstance = createInstanceTemplate();
     newInstance['class'] = className;
     newInstance.name = args.name;
-    newInstance.plugins = JSON.parse(args.plugins)
+    newInstance.plugins = args.plugins
   } else {
     const newTemplate = currentInstance ? Object.assign({}, currentInstance) : createInstanceTemplate();
     newInstance =  await getFromEditor(newTemplate, classParent);

@@ -2,33 +2,25 @@ const Plugin = require('./Plugin.js');
 const util = require('../util.js')
 const childProcess = require("child_process");
 const path = require('path');
+const configParser = require("../util/config-parser.js")
 
 class CodeZooPlugin extends Plugin{
 
+  async runCommand(commandObj){
+    return configParser.createNew(commandObj.class, commandObj);
+  }
+
   async onNew(levelName, previousLevel){
-    const command =  `new ${this.config.class} -n ${this.config.name} -p '${JSON.stringify(this.config.plugins)}' --parent ${this.config.parent}`
-    
-    this.runCodeZooCommand(command);
-  }
-
-  runCodeZooCommand(command, noLog){
-    return new Promise((resolve, reject) => {
-      if(!noLog){
-        util.logStep(`codezoo ${command}`);
+    if(this.config.instances){
+      for(var i = 0; i < this.config.instances.length; i++){
+        const instance = this.config.instances[i];
+        await this.runCommand(instance);
       }
-      const props = {"cwd" : path.resolve(__dirname, '..'), "encoding" : 'utf-8'};
-      childProcess.exec(`node codezoo.js ${command}`, props, (error, stdout, stderr) => {
-        if(error){
-          reject(error);
-        } else {
-          if(!noLog)
-            util.logStep(stdout);  
-          resolve(stdout ? stdout : "");
-        }
-      })
-    })
-
+    } else {
+      await this.runCommand(this.config);
+    }
   }
+
 }
 
 module.exports = CodeZooPlugin;
