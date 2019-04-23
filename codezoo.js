@@ -4,7 +4,9 @@ const config = require('./util/config-parser.js')
 const yargs = require('yargs')
 
 config.load().then(()=>{
-    yargs.command({
+    yargs
+    .command('$0', 'Default Command', () => {}, argv => config.showLevelChain())
+    .command({
       command: 'new <class>',
       aliases: ['new', 'create'],
       desc: 'new description',
