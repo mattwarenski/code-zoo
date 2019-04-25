@@ -11,7 +11,7 @@ class SymlinkPlugin extends Plugin {
   }
 
   switchLink(levelName){
-    const levelDir = path.join(this.config.containerDir, levelName.replace(" ", "_"))    
+    const levelDir = path.join(this.config.containerDir, levelName.replace(/ /g, "_"))    
     //todo at some point this will have to check the archives as well
     if(!fs.existsSync(levelDir)) {
       util.logStep("Directory does not exist. Creating: " + levelDir)
